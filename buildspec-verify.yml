@@ -1,0 +1,28 @@
+# Verify: every web server must answer 200 with the new release ID (T1, T6).
+# On failure, point current back at the previous release and fail the stage.
+version: 0.2
+phases:
+  build:
+    commands:
+      - |
+        set -u
+        fail=0
+        for host in $WEB_HOSTS; do
+          ok=0
+          for i in 1 2 3 4 5; do
+            body=$(curl -s -m 5 -w '\n%{http_code}' "http://$host/") || body=""
+            code=$(echo "$body" | tail -n1)
+            if [ "$code" = "200" ] && echo "$body" | grep -q "release=$RELEASE_ID"; then ok=1; break; fi
+            sleep 3
+          done
+          echo "$host -> code=$code ok=$ok"
+          [ $ok -eq 1 ] || fail=1
+        done
+        if [ $fail -ne 0 ]; then
+          prev=$(cat /mnt/efs/.previous_release)
+          if [ -n "$prev" ]; then
+            cd /mnt/efs && rm -f current.tmp && ln -s "$prev" current.tmp && mv -T current.tmp current
+            echo "ROLLED BACK current -> $prev"
+          fi
+          exit 1
+        fi

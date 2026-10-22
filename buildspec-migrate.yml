@@ -1,0 +1,19 @@
+# Migrate: run add_query SQL on the migration EC2 through SSM, wait, fail the stage
+# if the command fails. CodeBuild itself holds no DB credentials.
+version: 0.2
+phases:
+  build:
+    commands:
+      - test -n "$RELEASE_ID" && test -n "$MIGRATE_INSTANCE_ID"
+      - |
+        CMD_ID=$(aws ssm send-command \
+          --document-name Asics-RunAddQuery \
+          --instance-ids "$MIGRATE_INSTANCE_ID" \
+          --parameters releaseId="$RELEASE_ID" \
+          --query Command.CommandId --output text)
+        echo "SSM command: $CMD_ID"
+        rc=0
+        aws ssm wait command-executed --command-id "$CMD_ID" --instance-id "$MIGRATE_INSTANCE_ID" || rc=$?
+        aws ssm get-command-invocation --command-id "$CMD_ID" --instance-id "$MIGRATE_INSTANCE_ID" \
+          --query '[Status,StandardOutputContent,StandardErrorContent]' --output text
+        exit $rc

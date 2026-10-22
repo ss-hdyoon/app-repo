@@ -1,0 +1,15 @@
+# Switch: point current at the new release. Relative link, replaced with mv -T so
+# the link never disappears. The previous target is kept for Verify's rollback.
+version: 0.2
+phases:
+  build:
+    commands:
+      - |
+        set -eu
+        cd /mnt/efs
+        test -d "releases/$RELEASE_ID"
+        readlink current > .previous_release 2>/dev/null || : > .previous_release
+        rm -f current.tmp
+        ln -s "releases/$RELEASE_ID" current.tmp
+        mv -T current.tmp current
+        echo "current -> $(readlink current) (previous: $(cat .previous_release))"
