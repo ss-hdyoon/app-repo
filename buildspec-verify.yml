@@ -1,4 +1,5 @@
-# Verify: every web server must answer 200 with the new release ID (T1, T6).
+# Verify: every web server's /health.php must answer 200 (DB reachable) with the new
+# release ID (T1, T6).
 # On failure, point current back at the previous release and fail the stage.
 version: 0.2
 phases:
@@ -10,7 +11,7 @@ phases:
         for host in $WEB_HOSTS; do
           ok=0
           for i in 1 2 3 4 5; do
-            body=$(curl -s -m 5 -w '\n%{http_code}' "http://$host/") || body=""
+            body=$(curl -s -m 5 -w '\n%{http_code}' "http://$host/health.php") || body=""
             code=$(echo "$body" | tail -n1)
             if [ "$code" = "200" ] && echo "$body" | grep -q "release=$RELEASE_ID"; then ok=1; break; fi
             sleep 3
