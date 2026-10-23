@@ -7,6 +7,8 @@ phases:
   build:
     commands:
       - test -n "$RELEASE_ID"
-      - mkdir -p /mnt/efs/releases/$RELEASE_ID
+      # 755 so Apache can read releases/ (the build's umask would make it 700)
+      - install -d -m 755 /mnt/efs/releases /mnt/efs/releases/$RELEASE_ID
+      - chmod 755 /mnt/efs/releases
       - rsync -a --delete --exclude .git ./ /mnt/efs/releases/$RELEASE_ID/
       - echo "staged releases/$RELEASE_ID"
